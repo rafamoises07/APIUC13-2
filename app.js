@@ -17,6 +17,35 @@ app.get("/", (req, res) => {
   res.status(200).json({ msg: "Bem vindo a nossa API! " });
 });
 
+// Rota privada
+app.get("user/:id", checktoken, async (req, res) => {
+  const id = req.params.id;
+
+  const user = await User.findById(id, "-password"); // Busca no banco o user sem a senha 
+
+  if (!user) {
+    return res.status(404).json({ msg: "Usuário não encontrado!" });
+  }
+
+  res.status(200).json({ user }); // Retorna os dados do user encontrado
+});
+
+function checktoken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.splint(" ")[1];
+
+  if (!token) return res.status(401).json({ msg: "Acesso negado! " });
+
+  try {
+    const secret = process.env.SECRET;
+
+    jwt.verify(token, secret);
+
+    next();
+  } catch (err) {
+    res.status(400).json({ msg: "O token é inválido! " });
+  }
+  }
 // Criação de usuarios
 app.post("/auth/register", async (req, res) => {
   const { name, email, password, confirmpassword} = req.body;
@@ -60,14 +89,51 @@ app.post("/auth/register", async (req, res) => {
   }
 
 });
+
+app.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email) {
+    return res.status(422).json({ msg: "O email deve ser ser informado!"});
+  }
+
+  if (!password) {
+    return res.status(422).json({ msg: "A senha deve ser informada!"});
+  }
+
+  const user = await User.findOne({ email: email}); //Busca o usuario no banco
+
+  if (!user) {
+    return res.status(404).json({ msg: "Usuário não encontrado!"});
+  }
+
+  const checkPassword = await bcrypt.compare(password, user.password);
+
+  if (!checkPassword) {
+    return res.status(422).json({ msg: "Senha inválida, tente novamente"});
+  }
+// Fazer um env Secret para evitar invações
+  try {
+    const secret = process.env.SECRET;
+
+    const token = jwt.sign(
+      {
+        id: user._id // Cria o token JWT contendo o ID do usuário
+      },
+      secret
+    );
+    res.status(200).json({ msg: "Autenticação realizada com sucesso!", token});
+  } catch (error) {
+    res.status(500).json({ msg: error}); // Somente se não gerar o token 
+  }
+});
 // Credenciais
 const dbUser = process.env.DB_USER;
 const dbPassword = process.env.DB_PASS;
 
 mongoose
   .connect(
-    `mongodb+srv://${dbUser}:${dbPassword}@api.hpq3j.mongodb.net/?retryWrites=true&w=majority&appName=API`
-  
+    `mongodb+srv://${dbUser}:${dbPassword}@apiuc13-2.hpq3j.mongodb.net/?retryWrites=true&w=majority&appName=APIUC13-2`
   )
   .then(() => {
     app.listen(3000);
