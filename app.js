@@ -18,7 +18,7 @@ app.get("/", (req, res) => {
 });
 
 // Rota privada
-app.get("user/:id", checktoken, async (req, res) => {
+app.get("/user/:id", checktoken, async (req, res) => {
   const id = req.params.id;
 
   const user = await User.findById(id, "-password"); // Busca no banco o user sem a senha 
@@ -32,7 +32,7 @@ app.get("user/:id", checktoken, async (req, res) => {
 
 function checktoken(req, res, next) {
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.splint(" ")[1];
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) return res.status(401).json({ msg: "Acesso negado! " });
 
@@ -77,7 +77,7 @@ app.post("/auth/register", async (req, res) => {
   const user = new User({
     name, 
     email,
-    passwordHash,
+    password: passwordHash,
   });
 
   try {
@@ -104,7 +104,7 @@ app.post("/auth/login", async (req, res) => {
   const user = await User.findOne({ email: email}); //Busca o usuario no banco
 
   if (!user) {
-    return res.status(404).json({ msg: "Usuário não encontrado!"});
+    return res.status(404).json({ msg: "Usuário não encontrado! Por favor faça o cadastro."});
   }
 
   const checkPassword = await bcrypt.compare(password, user.password);
@@ -141,4 +141,4 @@ mongoose
   })
   .catch((err) => console.log(err));
 
-// npm run start
+// npm run start 
